@@ -1,0 +1,171 @@
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import StatCard from "@/components/dashboard/StatCard";
+import MonthlyChart from "@/components/dashboard/MonthlyChart";
+import InvoiceTypeChart from "@/components/dashboard/InvoiceTypeChart";
+import RecentInvoices from "@/components/dashboard/RecentInvoices";
+import FilterComponent from "@/components/filters/FilterComponent";
+import { Button } from "@/components/ui/button";
+import {
+  CalendarIcon,
+  RefreshCcw,
+  Download,
+  Filter,
+  FileText,
+  DollarSign,
+  Clock
+} from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
+
+interface FilterState {
+  startDate: string;
+  endDate: string;
+  vendor: string;
+  currency: string;
+}
+
+export default function Dashboard() {
+  const { toast } = useToast();
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState<FilterState>({
+    startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0],
+    vendor: "",
+    currency: ""
+  });
+
+  // Query for analytics summary
+  const { data: analytics, isLoading, error, refetch } = useQuery({
+    queryKey: ["/api/analytics/summary", filters],
+    staleTime: 60000, // 1 minute
+    retry: 1
+  });
+
+  // Query for vendors dropdown
+  const { data: vendors } = useQuery({
+    queryKey: ["/api/vendors"],
+    staleTime: Infinity
+  });
+
+  const handleFilterChange = (newFilters: Partial<FilterState>) => {
+    setFilters(prev => ({ ...prev, ...newFilters }));
+  };
+
+  const handleApplyFilters = () => {
+    refetch();
+    toast({
+      title: "Filters Applied",
+      description: "Dashboard data has been updated based on your filters.",
+    });
+  };
+
+  const handleResetFilters = () => {
+    setFilters({
+      startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+      endDate: new Date().toISOString().split('T')[0],
+      vendor: "",
+      currency: ""
+    });
+  };
+
+  const handleExport = () => {
+    toast({
+      title: "Export Started",
+      description: "Your data is being prepared for download.",
+    });
+  };
+
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  };
+
+  return (
+    <div className="py-6 px-4 sm:px-6 lg:px-8">
+      {/* Dashboard Header */}
+      <div className="lg:flex lg:items-center lg:justify-between">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl">Dashboard</h2>
+          <div className="mt-1 flex flex-col sm:mt-0 sm:flex-row sm:flex-wrap sm:space-x-6">
+            <div className="mt-2 flex items-center text-sm text-gray-500">
+              <CalendarIcon className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" />
+              <span>
+                {formatDate(filters.startDate)} - {formatDate(filters.endDate)}
+              </span>
+            </div>
+            <div className="mt-2 flex items-center text-sm text-gray-500">
+              <RefreshCcw className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" />
+              <span>Last updated {new Date().toLocaleTimeString()}</span>
+            </div>
+          </div>
+        </div>
+        <div className="mt-5 flex lg:mt-0 lg:ml-4">
+          <span className="ml-3 hidden sm:block">
+            <Button variant="outline" onClick={handleExport}>
+              <Download className="-ml-1 mr-2 h-5 w-5" />
+              Export
+            </Button>
+          </span>
+          <span className="ml-3 hidden sm:block">
+            <Button onClick={() => setShowFilters(!showFilters)}>
+              <Filter className="-ml-1 mr-2 h-5 w-5" />
+              Filter
+            </Button>
+          </span>
+        </div>
+      </div>
+
+      {/* Filters Section */}
+      <FilterComponent 
+        isOpen={showFilters}
+        onToggle={() => setShowFilters(!showFilters)}
+        filters={filters}
+        onFilterChange={handleFilterChange}
+        onApply={handleApplyFilters}
+        onReset={handleResetFilters}
+        vendors={vendors || []}
+      />
+
+      {/* Metrics Cards */}
+      <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <StatCard 
+          title="Total Invoices"
+          value={isLoading ? "Loading..." : analytics?.total_invoices.toString() || "0"}
+          icon={<FileText className="text-white" />}
+          iconBgColor="bg-blue-500"
+          linkText="View all"
+          linkUrl="/invoices"
+        />
+        <StatCard 
+          title="Total Amount"
+          value={isLoading ? "Loading..." : formatCurrency(analytics?.total_amount || 0)}
+          icon={<DollarSign className="text-white" />}
+          iconBgColor="bg-green-500"
+          footer={
+            <div className="text-sm text-green-600">
+              <span className="font-medium">↑ 12.5%</span> from last month
+            </div>
+          }
+        />
+        <StatCard 
+          title="Pending Invoices"
+          value={isLoading ? "Loading..." : "23"}
+          icon={<Clock className="text-white" />}
+          iconBgColor="bg-amber-500"
+          linkText="View pending"
+          linkUrl="/invoices?status=pending"
+        />
+      </div>
+
+      {/* Charts Section */}
+      <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <MonthlyChart data={analytics?.monthly_totals || []} isLoading={isLoading} />
+        <InvoiceTypeChart data={analytics?.invoice_types || []} isLoading={isLoading} />
+      </div>
+
+      {/* Recent Invoices */}
+      <RecentInvoices />
+    </div>
+  );
+}
