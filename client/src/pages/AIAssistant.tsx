@@ -27,6 +27,7 @@ interface AIResult {
   total?: number;
   analysis?: string;
   chart_data?: any;
+  confidence?: "high" | "medium" | "low";
 }
 
 export default function AIAssistant() {
@@ -65,7 +66,7 @@ export default function AIAssistant() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-        },
+      },  
         body: JSON.stringify({ query: userMessage.content }),
       });
       
@@ -124,6 +125,18 @@ export default function AIAssistant() {
     
     return (
       <div className="mt-6">
+        {results.confidence && (
+          <div className="mb-3">
+            <span className="text-sm font-medium mr-2">Answer confidence:</span>
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+              ${results.confidence === 'high' ? 'bg-green-100 text-green-800' : 
+                results.confidence === 'medium' ? 'bg-yellow-100 text-yellow-800' : 
+                'bg-red-100 text-red-800'}`}>
+              {results.confidence.charAt(0).toUpperCase() + results.confidence.slice(1)}
+            </span>
+          </div>
+        )}
+        
         {results.invoices && results.invoices.length > 0 && (
           <Card className="p-4 mb-4">
             <h3 className="text-lg font-medium mb-3">Invoice Results</h3>

@@ -243,7 +243,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create prompt with context
       const contextPrompt = `
-You are an AI assistant helping with invoice analysis. Here's the available data:
+You are an AI assistant helping with invoice analysis. You MUST ONLY use the data provided below to answer queries. Do not make up or hallucinate any information that is not directly supported by this data.
 
 INVOICE DATA SUMMARY:
 - Total invoices: ${summary.total_invoices}
@@ -256,7 +256,7 @@ ${JSON.stringify(invoiceData, null, 2)}
 
 USER QUERY: ${query}
 
-Based on the invoice data provided, respond to the user query. If the query is asking for specific invoice data, return both:
+Based ONLY on the invoice data provided above, respond to the user query. If the query is asking for specific invoice data, return both:
 1. A natural language response to the query
 2. The specific data requested in a structured format
 
@@ -266,10 +266,16 @@ Format your response as valid JSON with the following structure:
   "invoices": [array of matching invoice objects] (optional),
   "total": numeric total if applicable (optional),
   "analysis": "Additional analysis if relevant" (optional),
-  "chart_data": structured data for visualization if relevant (optional)
+  "chart_data": structured data for visualization if relevant (optional),
+  "confidence": "high" | "medium" | "low" - indicate your confidence in the answer based on available data
 }
 
-IMPORTANT: Return ONLY the JSON object. Do not include markdown code blocks (like \`\`\`json) or any other text outside the JSON structure. The JSON should be directly parseable by JSON.parse().
+IMPORTANT GUIDELINES:
+1. Return ONLY the JSON object. Do not include markdown code blocks (like \`\`\`json) or any other text outside the JSON structure.
+2. If you cannot find the answer in the provided data, state clearly in your message that you don't have enough information to answer.
+3. Do not hallucinate or make up information that is not in the data provided.
+4. Be specific about which data you used to form your answer.
+5. If there are no results matching a query, explicitly state that no matching invoices were found rather than making up an answer.
 
 If you're uncertain or the query can't be answered with the available data, provide a helpful response explaining what information is needed.
 `;
@@ -293,6 +299,48 @@ If you're uncertain or the query can't be answered with the available data, prov
         
         // Try to parse as JSON
         const jsonResponse = JSON.parse(jsonStr);
+        
+        // Define the expected structure of an invoice from the AI response
+        interface AIResponseInvoice {
+          invoice_num: string;
+          invoice_date?: string;
+          vendor_name?: string;
+          invoice_amount?: number;
+          currency_code?: string;
+          invoice_type?: string;
+          [key: string]: any; // Allow for any other properties the AI might include
+        }
+        
+        // Verify that any returned invoices actually match data we sent
+        if (jsonResponse.invoices && Array.isArray(jsonResponse.invoices) && jsonResponse.invoices.length > 0) {
+          // Create a set of valid invoice numbers from our data
+          const validInvoiceNumbers = new Set(invoiceData.map(inv => inv.invoice_num));
+          
+          // Filter out any hallucinated invoices
+          const verifiedInvoices = jsonResponse.invoices.filter((inv: AIResponseInvoice) => {
+            // Check if this invoice exists in our original data
+            const isValid = validInvoiceNumbers.has(inv.invoice_num);
+            if (!isValid) {
+              console.warn(`Removing hallucinated invoice from AI response: ${inv.invoice_num}`);
+            }
+            return isValid;
+          });
+          
+          // If AI hallucinated invoices, update the response
+          if (verifiedInvoices.length !== jsonResponse.invoices.length) {
+            const removedCount = jsonResponse.invoices.length - verifiedInvoices.length;
+            jsonResponse.invoices = verifiedInvoices;
+            
+            // Update the message to be transparent about removal
+            if (verifiedInvoices.length === 0) {
+              jsonResponse.message = "I couldn't find any matching invoices in the available data. " + 
+                                     "Please try a different query or check if the data contains the information you're looking for.";
+            } else {
+              jsonResponse.message += ` (Note: ${removedCount} invalid result${removedCount > 1 ? 's were' : ' was'} removed from the results to ensure accuracy.)`;
+            }
+          }
+        }
+        
         res.json(jsonResponse);
       } catch (parseError) {
         // If we can't parse as JSON, just return the text response
