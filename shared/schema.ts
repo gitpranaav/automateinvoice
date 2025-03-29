@@ -5,6 +5,35 @@ import { z } from "zod";
 // MongoDB schema definitions for the invoice management system
 // Since we're using MongoDB, we'll define types rather than Drizzle tables
 
+// Google OAuth related types
+export interface GoogleUser {
+  id: string;
+  email: string;
+  displayName: string;
+  firstName?: string;
+  lastName?: string;
+  profileImageUrl?: string;
+  accessToken: string;
+  refreshToken?: string;
+  tokenExpiry?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export const googleUserSchema = z.object({
+  id: z.string(),
+  email: z.string().email(),
+  displayName: z.string(),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  profileImageUrl: z.string().url().optional(),
+  accessToken: z.string(),
+  refreshToken: z.string().optional(),
+  tokenExpiry: z.date().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date()
+});
+
 export interface InvoiceLine {
   line_number: number;
   line_type: string;
@@ -31,6 +60,11 @@ export interface Invoice {
   _id?: string;
   invoice_header: InvoiceHeader;
   invoice_lines: InvoiceLine[];
+  userId?: string; // Google user ID that owns this invoice
+  source?: string; // 'gmail', 'upload', etc.
+  emailId?: string; // If from Gmail, the email ID
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 // Zod schemas for validation
@@ -58,7 +92,12 @@ export const invoiceHeaderSchema = z.object({
 
 export const invoiceSchema = z.object({
   invoice_header: invoiceHeaderSchema,
-  invoice_lines: z.array(invoiceLineSchema)
+  invoice_lines: z.array(invoiceLineSchema),
+  userId: z.string().optional(),
+  source: z.string().optional(),
+  emailId: z.string().optional(),
+  createdAt: z.date().optional(),
+  updatedAt: z.date().optional(),
 });
 
 export const updateInvoiceHeaderSchema = invoiceHeaderSchema.partial();

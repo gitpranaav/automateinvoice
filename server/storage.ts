@@ -1,4 +1,4 @@
-import { Invoice, InvoiceHeader, InvoiceSummary, User, InsertUser } from "@shared/schema";
+import { Invoice, InvoiceHeader, InvoiceSummary, User, InsertUser, GoogleUser } from "@shared/schema";
 import { MongoClient, ObjectId } from "mongodb";
 
 export interface IStorage {
@@ -7,12 +7,22 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   
+  // Google User methods
+  getGoogleUserById(id: string): Promise<GoogleUser | null>;
+  getGoogleUserByEmail(email: string): Promise<GoogleUser | null>;
+  createGoogleUser(user: GoogleUser): Promise<GoogleUser>;
+  updateGoogleUser(id: string, userData: Partial<GoogleUser>): Promise<GoogleUser | null>;
+  
   // Invoice methods
   getInvoices(page: number, limit: number, filters?: any): Promise<{ invoices: Invoice[], total: number }>;
   getInvoiceByNumber(invoiceNum: string): Promise<Invoice | null>;
   updateInvoiceHeader(invoiceNum: string, data: Partial<InvoiceHeader>): Promise<Invoice | null>;
   getAnalyticsSummary(filters?: any): Promise<InvoiceSummary>;
   getVendorList(): Promise<string[]>;
+  
+  // User-specific invoice methods
+  getUserInvoices(userId: string, page: number, limit: number, filters?: any): Promise<{ invoices: Invoice[], total: number }>;
+  createInvoice(invoice: Invoice): Promise<Invoice>;
 }
 
 export class MongoStorage implements IStorage {
@@ -56,6 +66,70 @@ export class MongoStorage implements IStorage {
     const user: User = { ...insertUser, id };
     this.users.set(id, user);
     return user;
+  }
+
+  // Google User methods
+  async getGoogleUserById(id: string): Promise<GoogleUser | null> {
+    const db = this.client.db(this.dbName);
+    const collection = db.collection<GoogleUser>("google_users");
+    return collection.findOne({ id: id });
+  }
+
+  async getGoogleUserByEmail(email: string): Promise<GoogleUser | null> {
+    const db = this.client.db(this.dbName);
+    const collection = db.collection<GoogleUser>("google_users");
+    return collection.findOne({ email: email });
+  }
+
+  async createGoogleUser(user: GoogleUser): Promise<GoogleUser> {
+    const db = this.client.db(this.dbName);
+    const collection = db.collection<GoogleUser>("google_users");
+    
+    // Check if user already exists
+    const existingUser = await this.getGoogleUserById(user.id);
+    
+    if (existingUser) {
+      // Update the existing user instead
+      await collection.updateOne(
+        { id: user.id },
+        { $set: {
+          ...user,
+          updatedAt: new Date()
+        }}
+      );
+      
+      return { ...user, updatedAt: new Date() };
+    }
+    
+    // Set timestamps if not provided
+    if (!user.createdAt) {
+      user.createdAt = new Date();
+    }
+    if (!user.updatedAt) {
+      user.updatedAt = new Date();
+    }
+    
+    await collection.insertOne(user);
+    return user;
+  }
+
+  async updateGoogleUser(id: string, userData: Partial<GoogleUser>): Promise<GoogleUser | null> {
+    const db = this.client.db(this.dbName);
+    const collection = db.collection<GoogleUser>("google_users");
+    
+    // Always update the updatedAt timestamp
+    const updatedUser = {
+      ...userData,
+      updatedAt: new Date()
+    };
+    
+    const result = await collection.findOneAndUpdate(
+      { id: id },
+      { $set: updatedUser },
+      { returnDocument: "after" }
+    );
+    
+    return result;
   }
 
   // Invoice methods
@@ -304,6 +378,103 @@ export class MongoStorage implements IStorage {
     
     const result = await collection.aggregate(pipeline).toArray();
     return result.map(item => item._id);
+  }
+  
+  // User-specific invoice methods
+  async getUserInvoices(userId: string, page: number = 1, limit: number = 10, filters: any = {}): Promise<{ invoices: Invoice[], total: number }> {
+    const db = this.client.db(this.dbName);
+    const collection = db.collection<Invoice>("invoices");
+    
+    // Start with user filter
+    const query: any = { userId: userId };
+    
+    // Apply other filters
+    if (filters.vendor && filters.vendor !== "") {
+      query["invoice_header.vendor_name"] = filters.vendor;
+    }
+    
+    if (filters.currency && filters.currency !== "") {
+      query["invoice_header.currency_code"] = filters.currency;
+    }
+    
+    if (filters.invoiceType && filters.invoiceType !== "") {
+      query["invoice_header.invoice_type"] = filters.invoiceType;
+    }
+    
+    if (filters.startDate && filters.endDate) {
+      query["invoice_header.invoice_date"] = {
+        $gte: filters.startDate,
+        $lte: filters.endDate
+      };
+    }
+    
+    if (filters.search && filters.search !== "") {
+      // Search by invoice number or vendor name
+      query["$or"] = [
+        { "invoice_header.invoice_num": { $regex: filters.search, $options: "i" } },
+        { "invoice_header.vendor_name": { $regex: filters.search, $options: "i" } }
+      ];
+    }
+
+    const skip = (page - 1) * limit;
+    
+    // Get total count for pagination
+    const total = await collection.countDocuments(query);
+    
+    // Get paginated results
+    const invoices = await collection
+      .find(query)
+      .sort({ "invoice_header.invoice_date": -1 })
+      .skip(skip)
+      .limit(limit)
+      .toArray();
+      
+    // Recalculate invoice amounts for each invoice
+    for (const invoice of invoices) {
+      // Calculate the total invoice amount based on line items
+      const totalAmount = invoice.invoice_lines.reduce(
+        (sum, line) => sum + line.line_amount,
+        0
+      );
+      
+      // If the stored amount doesn't match the calculated amount, update it
+      if (invoice.invoice_header.invoice_amount !== totalAmount) {
+        await collection.updateOne(
+          { "invoice_header.invoice_num": invoice.invoice_header.invoice_num },
+          { $set: { "invoice_header.invoice_amount": totalAmount } }
+        );
+        
+        // Update the invoice object to return the correct amount
+        invoice.invoice_header.invoice_amount = totalAmount;
+      }
+    }
+    
+    return { invoices, total };
+  }
+  
+  async createInvoice(invoice: Invoice): Promise<Invoice> {
+    const db = this.client.db(this.dbName);
+    const collection = db.collection<Invoice>("invoices");
+    
+    // Set timestamps if not provided
+    if (!invoice.createdAt) {
+      invoice.createdAt = new Date();
+    }
+    if (!invoice.updatedAt) {
+      invoice.updatedAt = new Date();
+    }
+    
+    // Calculate and ensure the invoice amount matches line items total
+    const totalAmount = invoice.invoice_lines.reduce(
+      (sum, line) => sum + line.line_amount,
+      0
+    );
+    
+    // Update invoice amount to match the calculated total
+    invoice.invoice_header.invoice_amount = totalAmount;
+    
+    await collection.insertOne(invoice);
+    return invoice;
   }
 }
 

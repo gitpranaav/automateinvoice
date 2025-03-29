@@ -6,16 +6,38 @@ import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
 import Invoices from "@/pages/Invoices";
 import InvoiceDetails from "@/pages/InvoiceDetails";
+import AuthPage from "@/pages/auth-page";
 import Sidebar from "@/components/Sidebar";
 import { useState } from "react";
+import { AuthProvider, useAuth } from "@/hooks/use-auth";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { Loader2, LogOut, User } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-function Router() {
+function MainLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
+  const { user, logout, isLoading } = useAuth();
+
+  // Show loading indicator while checking authentication
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
       {/* Navbar */}
-      <nav className="bg-white shadow-sm z-10">
+      <nav className="bg-white shadow-sm z-10 dark:bg-background">
         <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
@@ -32,16 +54,28 @@ function Router() {
               </div>
             </div>
             <div className="flex items-center">
-              <div className="relative ml-3">
-                <div className="flex items-center text-gray-700">
-                  <span className="mr-2">Admin User</span>
-                  <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
+              {user && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={user.profileImageUrl} alt={user.displayName} />
+                        <AvatarFallback>{user.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56" align="end" forceMount>
+                    <div className="flex flex-col space-y-1 p-2">
+                      <p className="text-sm font-medium leading-none">{user.displayName}</p>
+                      <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                    </div>
+                    <DropdownMenuItem onClick={logout} className="text-red-600 cursor-pointer">
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Log out</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           </div>
         </div>
@@ -52,24 +86,49 @@ function Router() {
         <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto bg-slate-100">
-          <Switch>
-            <Route path="/" component={Dashboard} />
-            <Route path="/invoices" component={Invoices} />
-            <Route path="/invoices/:invoiceNum" component={InvoiceDetails} />
-            <Route component={NotFound} />
-          </Switch>
+        <main className="flex-1 overflow-y-auto bg-slate-100 dark:bg-muted/20">
+          {children}
         </main>
       </div>
     </div>
   );
 }
 
+function Router() {
+  return (
+    <Switch>
+      <ProtectedRoute path="/">
+        <MainLayout>
+          <Dashboard />
+        </MainLayout>
+      </ProtectedRoute>
+      <ProtectedRoute path="/invoices">
+        <MainLayout>
+          <Invoices />
+        </MainLayout>
+      </ProtectedRoute>
+      <ProtectedRoute path="/invoices/:invoiceNum">
+        <MainLayout>
+          <InvoiceDetails />
+        </MainLayout>
+      </ProtectedRoute>
+      <Route path="/auth">
+        <AuthPage />
+      </Route>
+      <Route>
+        <NotFound />
+      </Route>
+    </Switch>
+  );
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Router />
-      <Toaster />
+      <AuthProvider>
+        <Router />
+        <Toaster />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
