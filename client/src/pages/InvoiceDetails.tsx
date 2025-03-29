@@ -220,39 +220,62 @@ export default function InvoiceDetails() {
                 <div className="w-full bg-gray-100 flex flex-col">
                   <div className="p-4 bg-white border-b flex justify-between items-center">
                     <h3 className="text-lg font-medium">Invoice PDF Document</h3>
-                    {invoice_header.pdf_link && (
-                      <Button variant="outline" size="sm" onClick={() => window.open(invoice_header.pdf_link, "_blank")}>
-                        <ExternalLink className="mr-2 h-4 w-4" />
-                        Open in New Tab
-                      </Button>
-                    )}
-                    {invoice_header.pdf_base64 && !invoice_header.pdf_link && (
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => {
-                          const pdfWindow = window.open('', '_blank');
-                          if (pdfWindow) {
-                            pdfWindow.document.write(`
-                              <html>
-                                <head>
-                                  <title>Invoice ${invoice_header.invoice_num} PDF</title>
-                                </head>
-                                <body style="margin:0;padding:0;overflow:hidden">
-                                  <iframe 
-                                    src="data:application/pdf;base64,${invoice_header.pdf_base64}" 
-                                    style="border:none;width:100%;height:100vh"
-                                  ></iframe>
-                                </body>
-                              </html>
-                            `);
-                          }
-                        }}
-                      >
-                        <ExternalLink className="mr-2 h-4 w-4" />
-                        Open in New Tab
-                      </Button>
-                    )}
+                    <div className="flex gap-2">
+                      {/* Download Button */}
+                      {invoice_header.pdf_base64 && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => {
+                            const linkSource = `data:application/pdf;base64,${invoice_header.pdf_base64}`;
+                            const downloadLink = document.createElement("a");
+                            const fileName = `Invoice_${invoice_header.invoice_num}.pdf`;
+                            
+                            downloadLink.href = linkSource;
+                            downloadLink.download = fileName;
+                            downloadLink.click();
+                          }}
+                        >
+                          <Download className="mr-2 h-4 w-4" />
+                          Download
+                        </Button>
+                      )}
+                      
+                      {/* Open in new tab buttons */}
+                      {invoice_header.pdf_link && (
+                        <Button variant="outline" size="sm" onClick={() => window.open(invoice_header.pdf_link, "_blank")}>
+                          <ExternalLink className="mr-2 h-4 w-4" />
+                          Open in New Tab
+                        </Button>
+                      )}
+                      {invoice_header.pdf_base64 && !invoice_header.pdf_link && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => {
+                            const pdfWindow = window.open('', '_blank');
+                            if (pdfWindow) {
+                              pdfWindow.document.write(`
+                                <html>
+                                  <head>
+                                    <title>Invoice ${invoice_header.invoice_num} PDF</title>
+                                  </head>
+                                  <body style="margin:0;padding:0;overflow:hidden">
+                                    <iframe 
+                                      src="data:application/pdf;base64,${invoice_header.pdf_base64}" 
+                                      style="border:none;width:100%;height:100vh"
+                                    ></iframe>
+                                  </body>
+                                </html>
+                              `);
+                            }
+                          }}
+                        >
+                          <ExternalLink className="mr-2 h-4 w-4" />
+                          Open in New Tab
+                        </Button>
+                      )}
+                    </div>
                   </div>
                   <div className="w-full h-[800px]">
                     {invoice_header.pdf_link ? (
