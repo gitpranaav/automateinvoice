@@ -23,7 +23,17 @@ export default function Dashboard() {
   const endDate = new Date().toISOString().split('T')[0];
 
   // Query for analytics summary (without filters)
-  const { data: analytics, isLoading } = useQuery({
+  const { data: analytics = {
+    total_invoices: 0,
+    total_amount: 0,
+    invoice_types: [],
+    monthly_totals: []
+  }, isLoading } = useQuery<{
+    total_invoices: number;
+    total_amount: number;
+    invoice_types: { type: string; count: number; amount: number }[];
+    monthly_totals: { month: string; amount: number }[];
+  }>({
     queryKey: ["/api/analytics/summary"],
     staleTime: 60000, // 1 minute
     retry: 1

@@ -97,6 +97,30 @@ export default function Sidebar({ open, setOpen }: SidebarProps) {
             Vendors
           </a>
         </Link>
+        <Link href="/assistant">
+          <a
+            className={cn(
+              "group flex items-center px-4 py-3 text-sm font-medium rounded-md mb-1",
+              isActive("/assistant") ? "bg-slate-700" : "hover:bg-slate-700"
+            )}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="mr-3 h-5 w-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            AI Assistant
+          </a>
+        </Link>
         <Link href="/settings">
           <a
             className={cn(

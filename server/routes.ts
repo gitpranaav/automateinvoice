@@ -1,9 +1,10 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
 import { updateInvoiceHeaderSchema } from "@shared/schema";
 import * as XLSX from 'xlsx';
+import { processUserMessage } from "./ai-chatbot";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
@@ -194,6 +195,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error exporting invoices:", error);
       res.status(500).json({ message: "Failed to export invoices" });
+    }
+  });
+  
+  // AI Chatbot endpoint
+  app.post("/api/chat", async (req, res) => {
+    try {
+      const { message } = req.body;
+      
+      if (!message || typeof message !== 'string') {
+        return res.status(400).json({ message: "Invalid request. Message is required." });
+      }
+      
+      // Process the user message with the AI chatbot
+      const result = await processUserMessage(message);
+      
+      res.json({
+        answer: result.answer,
+        invoices: result.invoices || []
+      });
+    } catch (error) {
+      console.error("Error processing chat message:", error);
+      res.status(500).json({ 
+        message: "Failed to process your message",
+        answer: "I'm sorry, I encountered an error while processing your question. Please try again."
+      });
     }
   });
 
