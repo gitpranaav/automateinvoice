@@ -41,11 +41,9 @@ export default function StatCard({
         <div className="bg-gray-50 px-5 py-3">
           {linkText && linkUrl ? (
             <div className="text-sm">
-              <Link href={linkUrl}>
-                <a className="font-medium text-blue-600 hover:text-blue-700">
-                  {linkText}
-                  <span className="sr-only"> {title.toLowerCase()}</span>
-                </a>
+              <Link href={linkUrl} className="font-medium text-blue-600 hover:text-blue-700">
+                {linkText}
+                <span className="sr-only"> {title.toLowerCase()}</span>
               </Link>
             </div>
           ) : (

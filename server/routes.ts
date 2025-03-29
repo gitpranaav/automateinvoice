@@ -269,6 +269,8 @@ Format your response as valid JSON with the following structure:
   "chart_data": structured data for visualization if relevant (optional)
 }
 
+IMPORTANT: Return ONLY the JSON object. Do not include markdown code blocks (like \`\`\`json) or any other text outside the JSON structure. The JSON should be directly parseable by JSON.parse().
+
 If you're uncertain or the query can't be answered with the available data, provide a helpful response explaining what information is needed.
 `;
 
@@ -277,16 +279,26 @@ If you're uncertain or the query can't be answered with the available data, prov
       const response = await result.response;
       const aiResponse = response.text();
 
-      // Process AI response (assuming it returns valid JSON)
+      // Process AI response
       try {
-        // Try to parse the AI response as JSON
-        const jsonResponse = JSON.parse(aiResponse);
+        // The AI might format the JSON with code blocks or other formatting
+        // Let's try to extract just the JSON part if it exists
+        let jsonStr = aiResponse;
+        
+        // Check if response is wrapped in markdown code blocks
+        const jsonMatch = aiResponse.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/);
+        if (jsonMatch && jsonMatch[1]) {
+          jsonStr = jsonMatch[1];
+        }
+        
+        // Try to parse as JSON
+        const jsonResponse = JSON.parse(jsonStr);
         res.json(jsonResponse);
       } catch (parseError) {
-        // If the AI didn't return valid JSON, create a basic response
+        // If we can't parse as JSON, just return the text response
         console.error("Failed to parse AI response as JSON:", parseError);
         res.json({
-          message: aiResponse || "I processed your query, but couldn't format the result properly."
+          message: aiResponse.replace(/```(?:json)?\s*|\s*```/g, '') || "I processed your query, but couldn't format the result properly."
         });
       }
     } catch (error) {
