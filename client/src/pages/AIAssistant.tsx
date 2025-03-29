@@ -86,9 +86,19 @@ export default function AIAssistant() {
       setResults(data);
     } catch (error) {
       console.error('Error querying AI assistant:', error);
+      const response = error instanceof Response ? await error.json() : null;
+      
+      let errorContent = "I'm sorry, I encountered an error processing your request. Please try again.";
+      
+      if (response && response.needsApiKey) {
+        errorContent = "The AI Assistant requires a valid Gemini API key. Please check the API key configuration.";
+      } else if (response && response.message) {
+        errorContent = `Error: ${response.message}`;
+      }
+      
       const errorMessage: ChatMessage = { 
         role: "assistant", 
-        content: "I'm sorry, I encountered an error processing your request. Please try again." 
+        content: errorContent
       };
       setMessages(prev => [...prev, errorMessage]);
       

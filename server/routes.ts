@@ -218,7 +218,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Initialize the Google Generative AI with the API key
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
       // Get invoice data to provide context for the AI
       // For now, we'll get the most recent 100 invoices to provide as context
