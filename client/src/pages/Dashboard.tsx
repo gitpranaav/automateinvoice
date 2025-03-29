@@ -1,73 +1,33 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import StatCard from "@/components/dashboard/StatCard";
 import MonthlyChart from "@/components/dashboard/MonthlyChart";
 import InvoiceTypeChart from "@/components/dashboard/InvoiceTypeChart";
 import RecentInvoices from "@/components/dashboard/RecentInvoices";
-import FilterComponent from "@/components/filters/FilterComponent";
 import { Button } from "@/components/ui/button";
 import {
   CalendarIcon,
   RefreshCcw,
   Download,
-  Filter,
   FileText,
   DollarSign,
   Clock
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
-interface FilterState {
-  startDate: string;
-  endDate: string;
-  vendor: string;
-  currency: string;
-}
-
 export default function Dashboard() {
   const { toast } = useToast();
-  const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState<FilterState>({
-    startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0],
-    vendor: "",
-    currency: ""
-  });
+  
+  // Set default date range for the current month
+  const startDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+  const endDate = new Date().toISOString().split('T')[0];
 
-  // Query for analytics summary
-  const { data: analytics, isLoading, error, refetch } = useQuery({
-    queryKey: ["/api/analytics/summary", filters],
+  // Query for analytics summary (without filters)
+  const { data: analytics, isLoading } = useQuery({
+    queryKey: ["/api/analytics/summary"],
     staleTime: 60000, // 1 minute
     retry: 1
   });
-
-  // Query for vendors dropdown
-  const { data: vendors } = useQuery({
-    queryKey: ["/api/vendors"],
-    staleTime: Infinity
-  });
-
-  const handleFilterChange = (newFilters: Partial<FilterState>) => {
-    setFilters(prev => ({ ...prev, ...newFilters }));
-  };
-
-  const handleApplyFilters = () => {
-    refetch();
-    toast({
-      title: "Filters Applied",
-      description: "Dashboard data has been updated based on your filters.",
-    });
-  };
-
-  const handleResetFilters = () => {
-    setFilters({
-      startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-      endDate: new Date().toISOString().split('T')[0],
-      vendor: "",
-      currency: ""
-    });
-  };
 
   const handleExport = () => {
     toast({
@@ -91,7 +51,7 @@ export default function Dashboard() {
             <div className="mt-2 flex items-center text-sm text-gray-500">
               <CalendarIcon className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" />
               <span>
-                {formatDate(filters.startDate)} - {formatDate(filters.endDate)}
+                {formatDate(startDate)} - {formatDate(endDate)}
               </span>
             </div>
             <div className="mt-2 flex items-center text-sm text-gray-500">
@@ -107,25 +67,8 @@ export default function Dashboard() {
               Export
             </Button>
           </span>
-          <span className="ml-3 hidden sm:block">
-            <Button onClick={() => setShowFilters(!showFilters)}>
-              <Filter className="-ml-1 mr-2 h-5 w-5" />
-              Filter
-            </Button>
-          </span>
         </div>
       </div>
-
-      {/* Filters Section */}
-      <FilterComponent 
-        isOpen={showFilters}
-        onToggle={() => setShowFilters(!showFilters)}
-        filters={filters}
-        onFilterChange={handleFilterChange}
-        onApply={handleApplyFilters}
-        onReset={handleResetFilters}
-        vendors={vendors || []}
-      />
 
       {/* Metrics Cards */}
       <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
