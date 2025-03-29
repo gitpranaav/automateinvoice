@@ -1,0 +1,89 @@
+from pymongo import MongoClient
+import base64
+import random
+from datetime import datetime, timedelta
+
+# --- CONFIG ---
+MONGO_URI = "***REMOVED***"
+PDF_PATH = "D:/PROJECTS/COEP/test_1.pdf"
+DATABASE_NAME = "invoice_automation"
+COLLECTION_NAME = "invoices"
+NUM_INVOICES = 15
+
+# --- Load PDF and encode it ---
+def encode_pdf(filepath):
+    with open(filepath, "rb") as f:
+        return base64.b64encode(f.read()).decode("utf-8")
+
+pdf_base64 = encode_pdf(PDF_PATH)
+
+# --- Sample data pools ---
+vendors = ["TechCorp", "HealthPlus", "OfficeWorld", "GreenEnergy", "BuildSmart"]
+currencies = ["USD", "INR", "EUR"]
+invoice_types = ["Standard", "Credit Memo"]
+payment_terms = ["NET30", "NET45", "NET60"]
+descriptions = [
+    "Consulting Fee", "Cloud Subscription", "Software License", "Technical Support",
+    "IT Infrastructure Setup", "Hardware Supply", "Maintenance Contract",
+    "Training Workshop", "UI/UX Design Services", "Annual Hosting Fee",
+    "Custom Development", "Network Installation", "Security Audit",
+    "Project Management", "Data Migration"
+]
+
+# --- Generate dummy invoice data ---
+def generate_invoice(i):
+    invoice_num = f"INV{100 + i}"
+    invoice_date = (datetime(2024, 3, 1) + timedelta(days=i)).strftime("%Y-%m-%d")
+    vendor = random.choice(vendors)
+    currency = random.choice(currencies)
+    payment_term = random.choice(payment_terms)
+    invoice_type = random.choice(invoice_types)
+    line_count = random.randint(1, 4)
+
+    invoice_lines = []
+    total_amount = 0
+
+    for line_number in range(1, line_count + 1):
+        qty = random.randint(1, 5)
+        unit_price = round(random.uniform(100.0, 1000.0), 2)
+        line_amount = round(qty * unit_price, 2)
+        total_amount += line_amount
+
+        invoice_lines.append({
+            "invoice_num": invoice_num,
+            "line_number": line_number,
+            "line_type": "Service" if random.random() > 0.3 else "Product",
+            "description": random.choice(descriptions),
+            "quantity": qty,
+            "unit_price": unit_price,
+            "line_amount": line_amount
+        })
+
+    invoice_header = {
+        "organization_code": 100000 + i,
+        "invoice_num": invoice_num,
+        "invoice_date": invoice_date,
+        "vendor_name": vendor,
+        "vendor_site_code": f"V{str(i + 1).zfill(3)}",
+        "invoice_amount": round(total_amount, 2),
+        "currency_code": currency,
+        "payment_term": payment_term,
+        "invoice_type": invoice_type,
+        "pdf_base64": pdf_base64
+    }
+
+    return {
+        "invoice_header": invoice_header,
+        "invoice_lines": invoice_lines
+    }
+
+# --- Main process ---
+client = MongoClient(MONGO_URI)
+client.drop_database(DATABASE_NAME)
+db = client[DATABASE_NAME]
+collection = db[COLLECTION_NAME]
+
+dummy_invoices = [generate_invoice(i) for i in range(NUM_INVOICES)]
+collection.insert_many(dummy_invoices)
+
+print(f"✅ Inserted {NUM_INVOICES} invoices into MongoDB with embedded PDFs.")
