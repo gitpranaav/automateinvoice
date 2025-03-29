@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ interface FilterState {
 
 export default function Invoices() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [showFilters, setShowFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
@@ -31,14 +32,36 @@ export default function Invoices() {
     search: ""
   });
 
+  // Create query params for the API request
+  const createQueryParams = () => {
+    const params = new URLSearchParams();
+    
+    params.append('page', currentPage.toString());
+    params.append('limit', '10');
+    
+    if (filters.vendor) params.append('vendor', filters.vendor);
+    if (filters.invoiceType) params.append('invoiceType', filters.invoiceType);
+    if (filters.startDate) params.append('startDate', filters.startDate);
+    if (filters.endDate) params.append('endDate', filters.endDate);
+    if (filters.search) params.append('search', filters.search);
+    
+    return params.toString();
+  };
+
   // Query for invoices with pagination and filters
   const { data, isLoading, error, refetch } = useQuery<{
     invoices: Invoice[];
     pagination: { total: number; totalPages: number }
   }>({
-    queryKey: ["/api/invoices", { page: currentPage, limit: 10, ...filters }],
-    staleTime: 60000,
-    retry: 1
+    queryKey: ['/api/invoices', { page: currentPage, ...filters }],
+    queryFn: async () => {
+      const response = await fetch(`/api/invoices?${createQueryParams()}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch invoices');
+      }
+      return response.json();
+    },
+    staleTime: 60000
   });
 
   // Query for vendors dropdown
@@ -46,6 +69,11 @@ export default function Invoices() {
     queryKey: ["/api/vendors"],
     staleTime: Infinity
   });
+
+  // Refetch when page changes
+  useEffect(() => {
+    refetch();
+  }, [currentPage, refetch]);
 
   const handleFilterChange = (newFilters: Partial<FilterState>) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
@@ -55,6 +83,7 @@ export default function Invoices() {
     e.preventDefault();
     setFilters(prev => ({ ...prev, search: searchTerm }));
     setCurrentPage(1);
+    refetch();
   };
 
   const handleApplyFilters = () => {
@@ -76,6 +105,7 @@ export default function Invoices() {
     });
     setSearchTerm("");
     setCurrentPage(1);
+    refetch();
   };
 
   // Editing is now done directly on the details page

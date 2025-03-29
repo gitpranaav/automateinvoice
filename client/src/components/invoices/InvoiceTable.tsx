@@ -48,6 +48,11 @@ export default function InvoiceTable({
   };
 
   const renderPagination = () => {
+    // Don't render pagination if there are no pages
+    if (totalPages <= 0) {
+      return null;
+    }
+    
     const pageNumbers = [];
     const maxPagesToShow = 5;
     
@@ -75,7 +80,13 @@ export default function InvoiceTable({
         
         {startPage > 1 && (
           <>
-            <Button variant="outline" size="sm" onClick={() => onPageChange(1)}>1</Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => onPageChange(1)}
+            >
+              1
+            </Button>
             {startPage > 2 && <span className="px-2">...</span>}
           </>
         )}
@@ -108,7 +119,7 @@ export default function InvoiceTable({
           variant="outline"
           size="sm"
           onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
+          disabled={currentPage === totalPages || totalPages === 0}
         >
           <ChevronRight className="h-4 w-4" />
         </Button>
