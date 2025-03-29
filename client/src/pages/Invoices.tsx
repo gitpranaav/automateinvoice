@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import FilterComponent from "@/components/filters/FilterComponent";
 import InvoiceTable from "@/components/invoices/InvoiceTable";
-import EditInvoiceModal from "@/components/invoices/EditInvoiceModal";
 import { FileText, Download, Filter, Plus, Search } from "lucide-react";
 import { Invoice } from "@shared/schema";
 
@@ -22,8 +21,7 @@ export default function Invoices() {
   const [showFilters, setShowFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  // No edit modal state needed as editing is done on the details page
   
   const [filters, setFilters] = useState<FilterState>({
     startDate: "",
@@ -34,14 +32,17 @@ export default function Invoices() {
   });
 
   // Query for invoices with pagination and filters
-  const { data, isLoading, error, refetch } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery<{
+    invoices: Invoice[];
+    pagination: { total: number; totalPages: number }
+  }>({
     queryKey: ["/api/invoices", { page: currentPage, limit: 10, ...filters }],
     staleTime: 60000,
     retry: 1
   });
 
   // Query for vendors dropdown
-  const { data: vendors } = useQuery({
+  const { data: vendors = [] } = useQuery<string[]>({
     queryKey: ["/api/vendors"],
     staleTime: Infinity
   });
@@ -77,19 +78,7 @@ export default function Invoices() {
     setCurrentPage(1);
   };
 
-  const handleEditInvoice = (invoice: Invoice) => {
-    setSelectedInvoice(invoice);
-    setIsEditModalOpen(true);
-  };
-
-  const handleInvoiceUpdated = () => {
-    refetch();
-    toast({
-      title: "Invoice Updated",
-      description: "Invoice details have been successfully updated.",
-    });
-    setIsEditModalOpen(false);
-  };
+  // Editing is now done directly on the details page
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -228,18 +217,8 @@ export default function Invoices() {
         totalPages={data?.pagination?.totalPages || 1}
         totalItems={data?.pagination?.total || 0}
         onPageChange={handlePageChange}
-        onEditInvoice={handleEditInvoice}
+        onEditInvoice={() => {}}
       />
-
-      {/* Edit Invoice Modal */}
-      {selectedInvoice && (
-        <EditInvoiceModal
-          isOpen={isEditModalOpen}
-          onClose={() => setIsEditModalOpen(false)}
-          invoice={selectedInvoice}
-          onSave={handleInvoiceUpdated}
-        />
-      )}
     </div>
   );
 }

@@ -6,17 +6,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import InvoiceLineItems from "@/components/invoices/InvoiceLineItems";
+import EditInvoiceModal from "@/components/invoices/EditInvoiceModal";
 import { ChevronLeft, FileText, ExternalLink, Edit, Download } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { Invoice } from "@shared/schema";
+import { useToast } from "@/hooks/use-toast";
 
 export default function InvoiceDetails() {
   const [, setLocation] = useLocation();
   const [match, params] = useRoute("/invoices/:invoiceNum");
   const invoiceNum = params?.invoiceNum;
   const [activeTab, setActiveTab] = useState<string>("details");
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const { toast } = useToast();
 
-  const { data: invoice, isLoading, error } = useQuery<Invoice>({
+  const { data: invoice, isLoading, error, refetch } = useQuery<Invoice>({
     queryKey: [`/api/invoices/${invoiceNum}`],
     enabled: !!invoiceNum,
   });
@@ -26,6 +30,19 @@ export default function InvoiceDetails() {
       console.error("Error loading invoice:", error);
     }
   }, [error]);
+  
+  const handleEditInvoice = () => {
+    setIsEditModalOpen(true);
+  };
+
+  const handleInvoiceUpdated = () => {
+    refetch();
+    setIsEditModalOpen(false);
+    toast({
+      title: "Success",
+      description: "Invoice has been updated successfully.",
+    });
+  };
 
   if (isLoading) {
     return (
@@ -113,7 +130,7 @@ export default function InvoiceDetails() {
               Download PDF
             </Button>
           )}
-          <Button onClick={() => setLocation(`/invoices?edit=${invoice_header.invoice_num}`)}>
+          <Button onClick={handleEditInvoice}>
             <Edit className="mr-2 h-4 w-4" />
             Edit Invoice
           </Button>
@@ -273,6 +290,16 @@ export default function InvoiceDetails() {
           </TabsContent>
         )}
       </Tabs>
+      
+      {/* Edit Invoice Modal */}
+      {invoice && (
+        <EditInvoiceModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          invoice={invoice}
+          onSave={handleInvoiceUpdated}
+        />
+      )}
     </div>
   );
 }
