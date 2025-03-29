@@ -11,7 +11,10 @@ export function setupAuth(app: Express): void {
   // Verify we have necessary environment variables
   const clientID = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const callbackURL = process.env.GOOGLE_CALLBACK_URL || 'http://localhost:3000/api/auth/google/callback';
+  // For Replit, use the current working domain
+  const callbackURL = "https://workspace.pranavnavandar2.repl.co/api/auth/google/callback";
+  
+  console.log("Google OAuth Callback URL:", callbackURL);
   const sessionSecret = process.env.SESSION_SECRET || 'invoice-automation-secret';
   const mongoUri = process.env.MONGO_URI || "***REMOVED***";
 
