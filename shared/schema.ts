@@ -24,7 +24,8 @@ export interface InvoiceHeader {
   currency_code: string;
   payment_term: string;
   invoice_type: string;
-  pdf_link: string;
+  pdf_link?: string;
+  pdf_base64?: string;
 }
 
 export interface Invoice {
@@ -53,7 +54,8 @@ export const invoiceHeaderSchema = z.object({
   currency_code: z.string(),
   payment_term: z.string(),
   invoice_type: z.string(),
-  pdf_link: z.string()
+  pdf_link: z.string().optional(),
+  pdf_base64: z.string().optional()
 });
 
 export const invoiceSchema = z.object({
