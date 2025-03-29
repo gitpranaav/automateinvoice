@@ -6,6 +6,7 @@ import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
 import Invoices from "@/pages/Invoices";
 import InvoiceDetails from "@/pages/InvoiceDetails";
+import AIAssistant from "@/pages/AIAssistant";
 import Sidebar from "@/components/Sidebar";
 import { useState } from "react";
 
@@ -57,6 +58,7 @@ function Router() {
             <Route path="/" component={Dashboard} />
             <Route path="/invoices" component={Invoices} />
             <Route path="/invoices/:invoiceNum" component={InvoiceDetails} />
+            <Route path="/ai-assistant" component={AIAssistant} />
             <Route component={NotFound} />
           </Switch>
         </main>

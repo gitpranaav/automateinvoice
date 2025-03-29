@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { z } from "zod";
 import { updateInvoiceHeaderSchema } from "@shared/schema";
 import * as XLSX from 'xlsx';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
@@ -194,6 +195,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error exporting invoices:", error);
       res.status(500).json({ message: "Failed to export invoices" });
+    }
+  });
+
+  // AI Assistant API endpoint
+  app.post("/api/ai-assistant/query", async (req, res) => {
+    try {
+      const { query } = req.body;
+      
+      if (!query || typeof query !== 'string') {
+        return res.status(400).json({ message: "Invalid query format" });
+      }
+
+      // Check for API key
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ 
+          message: "Gemini API key is not configured",
+          needsApiKey: true 
+        });
+      }
+
+      // Initialize the Google Generative AI with the API key
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+
+      // Get invoice data to provide context for the AI
+      // For now, we'll get the most recent 100 invoices to provide as context
+      const invoiceResult = await storage.getInvoices(1, 100);
+      const invoices = invoiceResult.invoices;
+
+      // Get analytics summary
+      const summary = await storage.getAnalyticsSummary();
+
+      // Prepare context for the AI
+      const invoiceData = invoices.map(invoice => {
+        const header = invoice.invoice_header;
+        return {
+          invoice_num: header.invoice_num,
+          invoice_date: header.invoice_date,
+          vendor_name: header.vendor_name,
+          invoice_amount: header.invoice_amount,
+          currency_code: header.currency_code,
+          invoice_type: header.invoice_type
+        };
+      });
+
+      // Create prompt with context
+      const contextPrompt = `
+You are an AI assistant helping with invoice analysis. Here's the available data:
+
+INVOICE DATA SUMMARY:
+- Total invoices: ${summary.total_invoices}
+- Total amount: ${summary.total_amount}
+- Invoice types: ${JSON.stringify(summary.invoice_types)}
+- Monthly totals: ${JSON.stringify(summary.monthly_totals)}
+
+RECENT INVOICES:
+${JSON.stringify(invoiceData, null, 2)}
+
+USER QUERY: ${query}
+
+Based on the invoice data provided, respond to the user query. If the query is asking for specific invoice data, return both:
+1. A natural language response to the query
+2. The specific data requested in a structured format
+
+Format your response as valid JSON with the following structure:
+{
+  "message": "Your natural language response to the user query",
+  "invoices": [array of matching invoice objects] (optional),
+  "total": numeric total if applicable (optional),
+  "analysis": "Additional analysis if relevant" (optional),
+  "chart_data": structured data for visualization if relevant (optional)
+}
+
+If you're uncertain or the query can't be answered with the available data, provide a helpful response explaining what information is needed.
+`;
+
+      // Generate content using the Gemini model
+      const result = await model.generateContent(contextPrompt);
+      const response = await result.response;
+      const aiResponse = response.text();
+
+      // Process AI response (assuming it returns valid JSON)
+      try {
+        // Try to parse the AI response as JSON
+        const jsonResponse = JSON.parse(aiResponse);
+        res.json(jsonResponse);
+      } catch (parseError) {
+        // If the AI didn't return valid JSON, create a basic response
+        console.error("Failed to parse AI response as JSON:", parseError);
+        res.json({
+          message: aiResponse || "I processed your query, but couldn't format the result properly."
+        });
+      }
+    } catch (error) {
+      console.error("Error processing AI assistant query:", error);
+      res.status(500).json({ message: "Failed to process your query" });
     }
   });
 
