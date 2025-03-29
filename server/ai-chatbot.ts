@@ -152,7 +152,7 @@ export async function processUserMessage(userMessage: string): Promise<{
     
     // Set up Gemini AI model with safety settings
     const model = genAI.getGenerativeModel({
-      model: 'gemini-1.0-pro',
+      model: 'gemini-pro', // Updated model name from 'gemini-1.0-pro' to 'gemini-pro'
       safetySettings: [
         {
           category: HarmCategory.HARM_CATEGORY_HARASSMENT,
@@ -205,8 +205,22 @@ export async function processUserMessage(userMessage: string): Promise<{
     };
   } catch (error) {
     console.error('Error processing chat message:', error);
-    return {
-      answer: 'Sorry, I encountered an error processing your question. Please try again or rephrase your question.',
-    };
+    
+    // Check if the error is related to the API key
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    
+    if (errorMsg.includes('API key') || errorMsg.includes('authentication') || errorMsg.includes('401')) {
+      return {
+        answer: 'There seems to be an issue with the AI service authentication. Please ensure the GEMINI_API_KEY is correctly set and valid.',
+      };
+    } else if (errorMsg.includes('404')) {
+      return {
+        answer: 'The AI model could not be found. This might be due to using an incorrect model name or API version.',
+      };
+    } else {
+      return {
+        answer: 'Sorry, I encountered an error processing your question. Please try again or rephrase your question.',
+      };
+    }
   }
 }

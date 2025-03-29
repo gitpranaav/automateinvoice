@@ -38,6 +38,12 @@ export default function ChatBot({ variant = 'inline' }: ChatBotProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  
+  // Debounce input changes to prevent excessive re-renders
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    setInput(e.target.value);
+  };
 
   // Focus input when chat is opened
   useEffect(() => {
@@ -237,7 +243,7 @@ export default function ChatBot({ variant = 'inline' }: ChatBotProps) {
           <Input
             placeholder="Ask about your invoices..."
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             ref={inputRef}
             disabled={isLoading}
