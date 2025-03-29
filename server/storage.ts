@@ -93,18 +93,22 @@ export class MongoStorage implements IStorage {
       ];
     }
 
-    const skip = (page - 1) * limit;
-    
     // Get total count for pagination
     const total = await collection.countDocuments(query);
     
-    // Get paginated results
-    const invoices = await collection
+    // Create query
+    const findQuery = collection
       .find(query)
-      .sort({ "invoice_header.invoice_date": -1 })
-      .skip(skip)
-      .limit(limit)
-      .toArray();
+      .sort({ "invoice_header.invoice_date": -1 });
+    
+    // Apply pagination unless limit is 0 (which means get all records for export)
+    if (limit > 0) {
+      const skip = (page - 1) * limit;
+      findQuery.skip(skip).limit(limit);
+    }
+    
+    // Execute query and get results
+    const invoices = await findQuery.toArray();
       
     // Recalculate invoice amounts for each invoice
     for (const invoice of invoices) {

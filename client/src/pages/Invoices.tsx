@@ -89,6 +89,21 @@ export default function Invoices() {
       title: "Export Started",
       description: "Your invoice data is being prepared for download.",
     });
+
+    // Create URL with current filters
+    const queryParams = new URLSearchParams();
+    
+    if (filters.vendor) queryParams.append('vendor', filters.vendor);
+    if (filters.invoiceType) queryParams.append('invoiceType', filters.invoiceType);
+    if (filters.startDate) queryParams.append('startDate', filters.startDate);
+    if (filters.endDate) queryParams.append('endDate', filters.endDate);
+    if (filters.search) queryParams.append('search', filters.search);
+    
+    // Create export URL with filters
+    const exportUrl = `/api/export/invoices?${queryParams.toString()}`;
+    
+    // Open the export URL in a new window/tab which will trigger the download
+    window.open(exportUrl, '_blank');
   };
 
   return (
