@@ -3,8 +3,10 @@ import base64
 import random
 from datetime import datetime, timedelta
 
+import os
+
 # --- CONFIG ---
-MONGO_URI = "***REMOVED***"
+MONGO_URI = os.environ.get("MONGO_URI", "")
 PDF_PATH = "D:/PROJECTS/COEP/test_1.pdf"
 DATABASE_NAME = "invoice_automation"
 COLLECTION_NAME = "invoices"

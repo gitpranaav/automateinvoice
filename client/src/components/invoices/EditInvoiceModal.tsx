@@ -24,6 +24,7 @@ export default function EditInvoiceModal({ isOpen, onClose, invoice, onSave }: E
     currency_code: invoice.invoice_header.currency_code,
     payment_term: invoice.invoice_header.payment_term,
     invoice_type: invoice.invoice_header.invoice_type,
+    invoice_status: invoice.invoice_header.invoice_status,
     pdf_link: invoice.invoice_header.pdf_link,
   });
 
@@ -166,6 +167,22 @@ export default function EditInvoiceModal({ isOpen, onClose, invoice, onSave }: E
                 <option value="Standard">Standard</option>
                 <option value="Credit">Credit</option>
                 <option value="Prepayment">Prepayment</option>
+              </select>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="invoice_status">Status</Label>
+              <select
+                id="invoice_status"
+                name="invoice_status"
+                className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                value={formData.invoice_status}
+                onChange={handleChange}
+              >
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
               </select>
             </div>
           </div>

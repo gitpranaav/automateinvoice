@@ -82,7 +82,7 @@ export default function Dashboard() {
         />
         <StatCard 
           title="Total Amount"
-          value={isLoading ? "Loading..." : formatCurrency(analytics?.total_amount || 0)}
+          value={isLoading ? "Loading..." : formatCurrency(analytics?.total_amount || 0, "USD")}
           icon={<DollarSign className="text-white" />}
           iconBgColor="bg-green-500"
           footer={

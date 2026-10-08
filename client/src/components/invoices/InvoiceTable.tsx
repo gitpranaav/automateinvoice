@@ -176,7 +176,7 @@ export default function InvoiceTable({
             {invoice.invoice_header.vendor_name}
           </TableCell>
           <TableCell>
-            {formatCurrency(invoice.invoice_header.invoice_amount)}
+            {formatCurrency(invoice.invoice_header.to_usd || 0, "USD")}
           </TableCell>
           <TableCell>
             {getInvoiceTypeBadge(invoice.invoice_header.invoice_type)}

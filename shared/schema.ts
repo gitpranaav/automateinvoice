@@ -21,9 +21,11 @@ export interface InvoiceHeader {
   vendor_name: string;
   vendor_site_code: string;
   invoice_amount: number;
+  to_usd: number;
   currency_code: string;
   payment_term: string;
   invoice_type: string;
+  invoice_status: string;
   pdf_link?: string;
   pdf_base64?: string;
 }
@@ -51,9 +53,11 @@ export const invoiceHeaderSchema = z.object({
   vendor_name: z.string(),
   vendor_site_code: z.string(),
   invoice_amount: z.number(),
+  to_usd: z.number(),
   currency_code: z.string(),
   payment_term: z.string(),
   invoice_type: z.string(),
+  invoice_status: z.string(),
   pdf_link: z.string().optional(),
   pdf_base64: z.string().optional()
 });
