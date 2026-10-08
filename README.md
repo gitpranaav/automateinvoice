@@ -119,4 +119,4 @@ npm run start
 
 ---
 
-> Built by Snacks(LeviathanExetutionUnit).
+> Built by Snacks(LeviathanExecutionUnit) in COEP INSPIRON 4.0 Hackathon March-2025.
